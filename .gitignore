@@ -1,0 +1,13 @@
+# Gerados pelo build.ps1
+dist/
+*.exe
+*.dll
+build.log
+lume.ico
+lume.png
+lume-512.png
+
+# Baixados pelo build.ps1 na primeira compilação
+bibliotecas/
+webview2/
+*.zip
