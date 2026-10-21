@@ -2,7 +2,7 @@
   <img src="assets/icone.png" width="128" alt="Ícone do Lume: uma folha com uma régua luminosa">
 </p>
 
-# LUME — v1.3
+# LUME — v1.4
 
 Leitor de **PDF, ePub e Mobi** para Windows, com biblioteca, régua de leitura, marcação de texto em cores e anotações. Seus livros e o ponto onde você parou ficam salvos no seu próprio computador.
 
@@ -11,6 +11,10 @@ Leitor de **PDF, ePub e Mobi** para Windows, com biblioteca, régua de leitura, 
 > **Aviso do Windows:** o instalador ainda não tem assinatura digital, então o SmartScreen pode mostrar "O Windows protegeu o computador". Clique em **Mais informações → Executar assim mesmo**.
 
 ![Biblioteca do Lume, com "Continuar Lendo" e a estante de livros](assets/biblioteca.png)
+
+## Novidades da v1.4
+
+- **Discord Rich Presence** — ao abrir um livro, seu perfil no Discord mostra **Lendo**, o autor e o título (sem a capa). O cartão some quando você fecha o livro, e a opção "Mostrar no Discord o livro que estou lendo", na barra lateral, liga e desliga na hora.
 
 ## Novidades da v1.3
 
@@ -27,7 +31,8 @@ Leitor de **PDF, ePub e Mobi** para Windows, com biblioteca, régua de leitura, 
 - **Leitura confortável** — tamanho do texto, papel claro, sépia ou escuro, sumário e tela cheia. O Lume lembra a página onde você parou.
 - **Régua de leitura** — destaca a linha que você está lendo e escurece o resto. A seta ↓ desce uma linha e vira a página sozinha no fim; ↑ volta. Tem modo automático com velocidade em palavras por minuto.
 - **Marcações e anotações** — trechos marcados e comentários ficam juntos na tela **Anotações**, com a cor de cada marcação. Clique numa anotação para voltar ao trecho.
-- **Seus arquivos no seu PC** — tudo fica em `Documentos\Lume`, como arquivos comuns. Nada é enviado para a internet.
+- **Discord** — mostra no seu perfil o livro que você está lendo (pode ser desligado).
+- **Seus arquivos no seu PC** — tudo fica em `Documentos\Lume`, como arquivos comuns. Seus livros e anotações não são enviados para a internet.
 - **Funciona offline** — as bibliotecas de leitura vêm dentro do programa.
 
 <table>
@@ -99,6 +104,7 @@ O resultado fica em `dist\`: o `Lume.exe` (com os três arquivos `.dll` do WebVi
 - Livros com DRM (por exemplo, comprados na Amazon) não abrem.
 - Mobi com compressão HUFF/CDIC e AZW3 (KF8) ainda não são suportados.
 - Em PDFs escaneados (só imagem), a régua e a marcação não encontram texto.
+- O cartão do Discord só aparece com o aplicativo do Discord aberto no computador e com a opção **Privacidade de atividades → Compartilhar minha atividade detectada** ligada.
 - Alguns antivírus podem desconfiar de programas novos sem assinatura digital. O código está todo aqui para quem quiser conferir.
 
 ## Já feito
@@ -109,6 +115,7 @@ O resultado fica em `dist\`: o `Lume.exe` (com os três arquivos `.dll` do WebVi
 - ✔ Marcação de texto em cinco cores e anotações
 - ✔ Uma ou duas páginas no ePub
 - ✔ Programa para Windows com janela própria e instalador
+- ✔ Discord Rich Presence (Lendo / autor / título)
 - ✔ Funciona sem internet
 
 ## Próximas ideias

@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.IO.Pipes;
 using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -20,8 +21,8 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyTitle("Lume")]
 [assembly: AssemblyDescription("Lume - leitor de PDF, ePub e Mobi")]
 [assembly: AssemblyProduct("Lume")]
-[assembly: AssemblyVersion("1.3.0.0")]
-[assembly: AssemblyFileVersion("1.3.0.0")]
+[assembly: AssemblyVersion("1.4.0.0")]
+[assembly: AssemblyFileVersion("1.4.0.0")]
 
 static class Program
 {
@@ -152,6 +153,18 @@ static class Program
             if (w != null) w.BeginInvoke((MethodInvoker)delegate { w.ShowFront(); });
             Status(c, 204); return;
         }
+        if (store == "presence")
+        {
+            if (m == "PUT")
+            {
+                string body;
+                using (StreamReader r = new StreamReader(c.Request.InputStream, Encoding.UTF8)) body = r.ReadToEnd();
+                string[] lines = body.Split('\n');
+                DiscordPresence.Set(lines[0], lines.Length > 1 ? lines[1] : "");
+            }
+            else DiscordPresence.Clear();
+            Status(c, 204); return;
+        }
         if (store == "open-folder" && m == "POST")
         {
             Process.Start("explorer.exe", "\"" + Root + "\"");
@@ -231,7 +244,7 @@ static class Program
         else Status(c, 405);
     }
 
-    static string Json(string s)
+    public static string Json(string s)
     {
         StringBuilder sb = new StringBuilder("\"");
         foreach (char ch in s)
@@ -256,6 +269,150 @@ static class Program
     {
         c.Response.StatusCode = code;
         c.Response.Close();
+    }
+}
+
+// Discord Rich Presence: mostra no perfil "Lendo" (nome do aplicativo no Discord), o autor e o título.
+// Conversa com o Discord pelo pipe local \\.\pipe\discord-ipc-N (sem internet, sem biblioteca extra).
+// Se o Discord não estiver aberto, tenta de novo a cada 15 segundos enquanto houver um livro aberto.
+static class DiscordPresence
+{
+    // ID do aplicativo "Lendo" no Portal de Desenvolvedores do Discord (não é segredo).
+    const string ClientId = "1562587405536600165";
+    static readonly object Lock = new object();
+    static readonly AutoResetEvent Wake = new AutoResetEvent(false);
+    static string wanted;            // atividade desejada (JSON) ou null para limpar
+    static Thread worker;
+    static NamedPipeClientStream pipe;
+
+    public static void Set(string title, string author)
+    {
+        string details = Field(author.Trim().Length > 0 ? author : "Autor desconhecido");
+        string state = Field(title.Trim().Length > 0 ? title : "Sem título");
+        lock (Lock) wanted = "{\"details\":" + Program.Json(details) + ",\"state\":" + Program.Json(state) + ",\"type\":0,\"instance\":false}";
+        Start(); Wake.Set();
+    }
+
+    public static void Clear()
+    {
+        lock (Lock) wanted = null;
+        Wake.Set();
+    }
+
+    // O Discord exige de 2 a 128 caracteres por linha
+    static string Field(string s)
+    {
+        s = s.Trim();
+        if (s.Length > 128) s = s.Substring(0, 125) + "...";
+        while (s.Length < 2) s += "\u2800";
+        return s;
+    }
+
+    static void Start()
+    {
+        if (ClientId.Length == 0) return;
+        lock (Lock)
+        {
+            if (worker != null) return;
+            worker = new Thread(Loop); worker.IsBackground = true; worker.Start();
+        }
+    }
+
+    static void Loop()
+    {
+        string sent = "\u0001"; // nada enviado ainda
+        while (true)
+        {
+            string want;
+            lock (Lock) want = wanted;
+            try
+            {
+                if (pipe == null || !pipe.IsConnected)
+                {
+                    if (want == null) { sent = null; Wake.WaitOne(); continue; } // nada para mostrar: nem conecta
+                    Connect(); sent = "\u0001";
+                }
+                if (want != sent)
+                {
+                    Write(1, "{\"cmd\":\"SET_ACTIVITY\",\"args\":{\"pid\":" + Process.GetCurrentProcess().Id
+                        + ",\"activity\":" + (want ?? "null") + "},\"nonce\":\"" + Guid.NewGuid() + "\"}");
+                    string resp = Read();
+                    Log((want == null ? "atividade limpa: " : "atividade enviada: ") + resp);
+                    sent = want;
+                }
+            }
+            catch (Exception e) { Log("sem conexão: " + e.Message); Disconnect(); sent = "\u0001"; }
+            Wake.WaitOne(15000);
+        }
+    }
+
+    static void Connect()
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            NamedPipeClientStream p = new NamedPipeClientStream(".", "discord-ipc-" + i, PipeDirection.InOut);
+            try
+            {
+                p.Connect(300);
+                pipe = p;
+                Write(0, "{\"v\":1,\"client_id\":\"" + ClientId + "\"}");
+                Read(); // READY
+                return;
+            }
+            catch { try { p.Dispose(); } catch { } pipe = null; }
+        }
+        throw new IOException("Discord não encontrado");
+    }
+
+    // Registro curto em %LOCALAPPDATA%\Lume\discord.log, para entender problemas de conexão
+    static void Log(string msg)
+    {
+        try
+        {
+            string f = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lume", "discord.log");
+            if (File.Exists(f) && new FileInfo(f).Length > 64 * 1024) File.Delete(f);
+            File.AppendAllText(f, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "  " + (msg.Length > 400 ? msg.Substring(0, 400) : msg) + Environment.NewLine, Encoding.UTF8);
+        }
+        catch { }
+    }
+
+    static void Disconnect()
+    {
+        try { if (pipe != null) pipe.Dispose(); } catch { }
+        pipe = null;
+    }
+
+    static void Write(int op, string json)
+    {
+        byte[] body = Encoding.UTF8.GetBytes(json);
+        byte[] frame = new byte[8 + body.Length];
+        BitConverter.GetBytes(op).CopyTo(frame, 0);
+        BitConverter.GetBytes(body.Length).CopyTo(frame, 4);
+        body.CopyTo(frame, 8);
+        pipe.Write(frame, 0, frame.Length);
+        pipe.Flush();
+    }
+
+    static string Read()
+    {
+        byte[] head = ReadExactly(8);
+        int op = BitConverter.ToInt32(head, 0), len = BitConverter.ToInt32(head, 4);
+        string json = Encoding.UTF8.GetString(ReadExactly(len));
+        if (op == 2) throw new IOException("Discord fechou a conexão: " + json); // ex.: ID do aplicativo inválido
+        return json;
+    }
+
+    static byte[] ReadExactly(int n)
+    {
+        byte[] b = new byte[n];
+        int got = 0;
+        while (got < n)
+        {
+            int r = pipe.Read(b, got, n - got);
+            if (r <= 0) throw new IOException("conexão com o Discord encerrada");
+            got += r;
+        }
+        return b;
     }
 }
 

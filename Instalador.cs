@@ -15,12 +15,12 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Instalador do Lume")]
 [assembly: AssemblyDescription("Instalador do Lume - leitor de PDF, ePub e Mobi")]
 [assembly: AssemblyProduct("Lume")]
-[assembly: AssemblyVersion("1.3.0.0")]
-[assembly: AssemblyFileVersion("1.3.0.0")]
+[assembly: AssemblyVersion("1.4.0.0")]
+[assembly: AssemblyFileVersion("1.4.0.0")]
 
 static class Setup
 {
-    public const string Version = "1.3.0";
+    public const string Version = "1.4.0";
     const string UninstKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\Lume";
 
     [STAThread]

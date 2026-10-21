@@ -62,6 +62,9 @@ svg.i{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .chip:hover{filter:brightness(.97)}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
 .side-note{margin:auto 10px 12px;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.side-check{display:flex;align-items:flex-start;gap:8px;margin:auto 10px 10px;font-size:12.5px;line-height:1.4;color:var(--muted);cursor:pointer}
+.side-check input{margin:2px 0 0;accent-color:var(--accent)}
+.side-check + .side-note{margin-top:0}
 .import{display:flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-fg);padding:14px;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.2) inset}
 .import:hover{background:var(--accent-strong)}
 
@@ -1527,6 +1530,7 @@ async function openBook(id, pos) {
     const impl = await make(stage, buf, b);
     if (R.book !== b) return impl.destroy();
     R.impl = impl;
+    presence(b);
     if (pos != null) await impl.goPos(pos);
     onLocation();
   } catch (e) {
@@ -1534,10 +1538,17 @@ async function openBook(id, pos) {
     stage.innerHTML = `<div class="r-msg"><div><strong>Não foi possível abrir este livro.</strong><br>${esc(e?.message || 'O arquivo parece estar corrompido.')}</div></div>`;
   }
 }
+// Discord: enquanto um livro está aberto, mostra "Lendo / autor / título" (só no programa para Windows)
+function presence(b) {
+  if (!DESKTOP) return;
+  const clean = s => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  const on = b && pref.get('discord', true);
+  fetch('/api/presence', on ? { method: 'PUT', body: clean(b.title) + '\n' + clean(b.author) } : { method: 'DELETE' }).catch(() => {});
+}
 function closeReader(silent) {
   if (R.book) saveBook(R.book);
   try { R.impl?.destroy(); } catch {}
-  R.impl = null; R.book = null; hideHlBar();
+  R.impl = null; R.book = null; hideHlBar(); presence(null);
   Ru.auto = false; Ru.lines = []; Ru.seq++; Ru.busy = false; clearTimeout(Ru.timer);
   $('#r-stage').innerHTML = '';
   if (!silent) { $('#reader').hidden = true; render(); }
@@ -1817,6 +1828,12 @@ async function demoShot(name) {
     const note = $('.side-note');
     note.innerHTML = `Seus livros, anotações e o ponto de leitura ficam salvos neste computador, em <b>${esc(DESKTOP)}</b>. <button class="back-link" id="open-folder" style="display:inline">Abrir pasta</button>`;
     $('#open-folder').onclick = () => fetch('/api/open-folder', { method: 'POST' }).catch(() => {});
+    const disc = document.createElement('label');
+    disc.className = 'side-check';
+    disc.innerHTML = '<input type="checkbox" id="discord-toggle"> Mostrar no Discord o livro que estou lendo';
+    note.before(disc);
+    $('#discord-toggle').checked = pref.get('discord', true);
+    $('#discord-toggle').onchange = e => { pref.set('discord', e.target.checked); presence(R.book); };
   }
   state.books = await DB.all('books');
   state.notes = await DB.all('notes');
