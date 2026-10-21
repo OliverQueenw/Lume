@@ -87,7 +87,8 @@ try {
   foreach ($f in $wvFiles.Values) { Copy-Item $f $outDir -Force }
 
   $csc = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-  $out = & $csc /nologo /target:winexe /platform:x64 /optimize+ "/out:$exe" "/win32icon:$here\lume.ico" "/resource:$here\lume.html,index.html" "/resource:$here\lume.png,icon.png" @resArgs /r:System.Windows.Forms.dll /r:System.Drawing.dll "/r:$($wvFiles.core)" "/r:$($wvFiles.forms)" "$here\Lume.cs" 2>&1
+  # /codepage:65001 = lê os .cs como UTF-8 (sem isso os acentos dos textos podem sair estragados)
+  $out = & $csc /nologo /codepage:65001 /target:winexe /platform:x64 /optimize+ "/out:$exe" "/win32icon:$here\lume.ico" "/resource:$here\lume.html,index.html" "/resource:$here\lume.png,icon.png" @resArgs /r:System.Windows.Forms.dll /r:System.Drawing.dll "/r:$($wvFiles.core)" "/r:$($wvFiles.forms)" "$here\Lume.cs" 2>&1
   $out | Out-File $log -Append -Encoding utf8
   "csc exit $LASTEXITCODE -> $exe" | Out-File $log -Append -Encoding utf8
 
@@ -95,7 +96,7 @@ try {
   if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $here 'Instalador.cs'))) {
     $setup = Join-Path $OutDir 'Instalar-Lume.exe'
     if (Test-Path $setup) { Remove-Item $setup -Force }
-    $out = & $csc /nologo /target:winexe /optimize+ "/out:$setup" "/win32icon:$here\lume.ico" "/resource:$exe,Lume.exe" "/resource:$here\lume.png,logo.png" "/resource:$($wvFiles.core),Microsoft.Web.WebView2.Core.dll" "/resource:$($wvFiles.forms),Microsoft.Web.WebView2.WinForms.dll" "/resource:$($wvFiles.loader),WebView2Loader.dll" /r:System.Windows.Forms.dll /r:System.Drawing.dll "$here\Instalador.cs" 2>&1
+    $out = & $csc /nologo /codepage:65001 /target:winexe /optimize+ "/out:$setup" "/win32icon:$here\lume.ico" "/resource:$exe,Lume.exe" "/resource:$here\lume.png,logo.png" "/resource:$($wvFiles.core),Microsoft.Web.WebView2.Core.dll" "/resource:$($wvFiles.forms),Microsoft.Web.WebView2.WinForms.dll" "/resource:$($wvFiles.loader),WebView2Loader.dll" /r:System.Windows.Forms.dll /r:System.Drawing.dll "$here\Instalador.cs" 2>&1
     $out | Out-File $log -Append -Encoding utf8
     "instalador exit $LASTEXITCODE -> $setup" | Out-File $log -Append -Encoding utf8
   }
