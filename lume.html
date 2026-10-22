@@ -251,6 +251,8 @@ mark.hl{color:inherit;border-radius:2px;cursor:pointer;padding:0}
 .flow .pb{break-before:column;height:0}
 .flow h1,.flow h2,.flow h3{line-height:1.25;break-after:avoid;text-wrap:balance}
 .flow p{margin:0 0 .85em;hyphens:auto}
+/* Texto justificado (Mobi); parágrafos com alinhamento próprio, como títulos centralizados, ficam como estão */
+.flow.justify p:not([align]):not([style*="text-align"]),.flow.justify li{text-align:justify;-webkit-hyphens:auto;hyphens:auto}
 .flow a{color:inherit}
 .flow ::selection{background:rgba(226,190,98,.45)}
 /* Régua de leitura */
@@ -283,6 +285,8 @@ mark.hl{color:inherit;border-radius:2px;cursor:pointer;padding:0}
 #ruler-info{padding:0 6px;font-variant-numeric:tabular-nums;min-width:0;overflow:hidden;text-overflow:ellipsis}
 #r-ruler[aria-pressed="true"]{color:var(--r-fg);background:var(--r-field)}
 #r-ruler[aria-pressed="true"] svg{fill:none}
+#r-justify[aria-pressed="true"]{color:var(--r-fg);background:var(--r-field)}
+#r-justify[aria-pressed="true"] svg{fill:none}
 @media (max-width:460px){#ruler-info,.ruler-ctl .sep:last-of-type{display:none}}
 @media (prefers-reduced-motion:reduce){.flow,.cover-wrap,.ruler-band,.ruler-shade{transition:none}}
 
@@ -380,6 +384,7 @@ mark.hl{color:inherit;border-radius:2px;cursor:pointer;padding:0}
     <div class="r-tools">
       <button class="icon-btn" id="r-toc" aria-label="Sumário" title="Sumário"><svg class="i" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg></button>
       <div class="sizes" role="group" aria-label="Tamanho do texto"><button class="sm" id="r-smaller" aria-label="Diminuir texto">A</button><button class="lg" id="r-bigger" aria-label="Aumentar texto">A</button></div>
+      <button class="icon-btn" id="r-justify" aria-label="Justificar texto" aria-pressed="false" title="Justificar texto"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg></button>
       <div class="sizes layout" id="r-layout" role="group" aria-label="Páginas na tela" hidden>
         <button id="r-one" aria-label="Uma página" title="Uma página"><svg class="i" viewBox="0 0 24 24"><rect x="6.5" y="3.5" width="11" height="17" rx="1.5"/><path d="M9 8h6M9 11h6M9 14h4"/></svg></button>
         <button id="r-two" aria-label="Duas páginas lado a lado" title="Duas páginas lado a lado"><svg class="i" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="8.5" height="15" rx="1.2"/><rect x="13" y="4.5" width="8.5" height="15" rx="1.2"/><path d="M4.8 9h4M4.8 12h4M15.2 9h4M15.2 12h4"/></svg></button>
@@ -990,7 +995,7 @@ addEventListener('dragover', e => e.preventDefault());
 addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('#drop').hidden = true; const fs = [...(e.dataTransfer?.files || [])]; if (fs.length) importFiles(fs); });
 
 /* ---------- Leitor ---------- */
-const R = { book: null, impl: null, size: pref.get('size', 100), spread: pref.get('spread', 'two'), rt: pref.get('rt', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), dragging: false, ctx: null, tab: 'toc' };
+const R = { book: null, impl: null, size: pref.get('size', 100), spread: pref.get('spread', 'two'), justify: pref.get('justify', false), rt: pref.get('rt', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), dragging: false, ctx: null, tab: 'toc' };
 
 function onLocation() {
   const info = R.impl?.info(); if (!info || !R.book) return;
@@ -1356,6 +1361,18 @@ async function EpubView(stage, buf, b) {
     } catch (e) { console.warn(e); }
   });
   rendition.on('keydown', readerKeys);
+  // Justificar: uma folha de estilo dentro de cada capítulo, ligada ou desligada pelo botão
+  const applyJustify = doc => {
+    if (!doc) return;
+    let st = doc.getElementById('lume-justify');
+    if (!st) {
+      st = doc.createElement('style'); st.id = 'lume-justify';
+      st.textContent = 'p, li { text-align: justify !important; -webkit-hyphens: auto; hyphens: auto; }';
+      (doc.head || doc.documentElement).appendChild(st);
+    }
+    st.disabled = !R.justify;
+  };
+  rendition.hooks.content.register(c => applyJustify(c.document));
   // No programa para Windows, só as opções do Lume aparecem sobre o texto (sem o menu do botão direito do Edge)
   if (DESKTOP) rendition.hooks.content.register(c => c.document.addEventListener('contextmenu', e => e.preventDefault()));
   rendition.on('click', e => {
@@ -1381,6 +1398,11 @@ async function EpubView(stage, buf, b) {
     next: () => rendition.next(), prev: () => rendition.prev(),
     goFraction: f => { if (ready) rendition.display(book.locations.cfiFromPercentage(f)); else toast('Ainda calculando as páginas deste livro…'); },
     setSize: s => rendition.themes.fontSize(s + '%'), setTheme: theme, resize() {},
+    setJustify: () => {
+      const cfi = loc?.start?.cfi;
+      rendition.getContents().forEach(c => applyJustify(c.document));
+      if (cfi) rendition.display(cfi); // refaz as páginas mantendo o ponto de leitura
+    },
     setSpread: v => {
       const cfi = loc?.start?.cfi;
       rendition.spread(v === 'two' ? 'auto' : 'none', 1);
@@ -1426,6 +1448,7 @@ async function MobiView(stage, buf, b) {
   stage.innerHTML = '<div class="flow-vp"><div class="flow"></div></div>';
   const vp = stage.querySelector('.flow-vp'), flow = vp.firstChild;
   flow.innerHTML = body;
+  flow.classList.toggle('justify', R.justify);
   let pages = 1, page = 0, w = 1, size = R.size, rcache = null;
   const frac = () => pages > 1 ? page / (pages - 1) : 1;
   const show = () => { flow.style.transform = `translateX(${-page * w}px)`; onLocation(); };
@@ -1486,6 +1509,7 @@ async function MobiView(stage, buf, b) {
     next: () => { if (page < pages - 1) { page++; show(); } }, prev: () => { if (page > 0) { page--; show(); } },
     goFraction: f => { page = clamp(Math.round(f * (pages - 1)), 0, pages - 1); show(); },
     setSize: s => { size = s; layout(frac()); }, setTheme() {}, resize: () => layout(frac()),
+    setJustify: v => { flow.classList.toggle('justify', v); layout(frac()); },
     preview: f => `Página ${Math.round(f * (pages - 1)) + 1} de ${pages}`,
     info: () => ({ label: `Página ${page + 1} de ${pages}`, fraction: frac(), progress: (page + 1) / pages, pos: frac() }),
     toc: async () => { const hs = headings(); const minL = Math.min(...hs.map(h => h.lvl)); return hs.map(h => ({ ...h, lvl: Math.min(2, h.lvl - minL) })); },
@@ -1521,6 +1545,7 @@ async function openBook(id, pos) {
   $('#r-sub').textContent = [FMT[b.format], b.author].filter(Boolean).join(' · ');
   $('#r-fav').setAttribute('aria-pressed', b.favorite);
   $('#r-layout').hidden = b.format !== 'epub'; syncSpread();
+  $('#r-justify').hidden = b.format === 'pdf'; syncJustify(); // PDF tem layout fixo: não dá para justificar
   document.querySelectorAll('.swatch').forEach(s => s.setAttribute('aria-pressed', s.dataset.rt === R.rt));
   $('#r-panel').hidden = true; $('#r-pct').textContent = ''; $('#r-pos').textContent = '';
   const stage = $('#r-stage');
@@ -1617,6 +1642,16 @@ const setSpread = v => {
 };
 $('#r-one').onclick = () => setSpread('one');
 $('#r-two').onclick = () => setSpread('two');
+function syncJustify() {
+  $('#r-justify').setAttribute('aria-pressed', R.justify);
+  $('#r-justify').title = $('#r-justify').ariaLabel = R.justify ? 'Alinhar texto à esquerda' : 'Justificar texto';
+}
+$('#r-justify').onclick = () => {
+  R.justify = !R.justify; pref.set('justify', R.justify); syncJustify();
+  R.impl?.setJustify?.(R.justify);
+  if (Ru.on) setTimeout(() => rulerRefresh('keep'), 400);
+  toast(R.justify ? 'Texto justificado.' : 'Texto alinhado à esquerda.');
+};
 $('#r-smaller').onclick = () => setSize(-10);
 $('#r-bigger').onclick = () => setSize(10);
 document.querySelectorAll('.swatch').forEach(s => s.onclick = () => {

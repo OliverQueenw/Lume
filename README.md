@@ -2,7 +2,7 @@
   <img src="assets/icone.png" width="128" alt="Ícone do Lume: uma folha com uma régua luminosa">
 </p>
 
-# LUME — v1.4
+# LUME — v1.5
 
 Leitor de **PDF, ePub e Mobi** para Windows, com biblioteca, régua de leitura, marcação de texto em cores e anotações. Seus livros e o ponto onde você parou ficam salvos no seu próprio computador.
 
@@ -11,6 +11,10 @@ Leitor de **PDF, ePub e Mobi** para Windows, com biblioteca, régua de leitura, 
 > **Aviso do Windows:** o instalador ainda não tem assinatura digital, então o SmartScreen pode mostrar "O Windows protegeu o computador". Clique em **Mais informações → Executar assim mesmo**.
 
 ![Biblioteca do Lume, com "Continuar Lendo" e a estante de livros](assets/biblioteca.png)
+
+## Novidades da v1.5
+
+- **Justificar texto** — novo botão no topo do leitor para justificar o texto em ePub e Mobi, com hifenização automática para evitar espaços grandes entre as palavras. A escolha vale para todos os livros. (PDF tem layout fixo, então o botão não aparece nele.)
 
 ## Novidades da v1.4
 
@@ -28,7 +32,7 @@ Leitor de **PDF, ePub e Mobi** para Windows, com biblioteca, régua de leitura, 
 
 - **Biblioteca** — capas, "Continuar Lendo" com o progresso de cada livro, busca, filtro por formato, favoritos e coleções.
 - **Três formatos** — PDF (com pdf.js), ePub (com epub.js) e Mobi (leitor próprio, escrito do zero, que extrai texto, capa e imagens).
-- **Leitura confortável** — tamanho do texto, papel claro, sépia ou escuro, sumário e tela cheia. O Lume lembra a página onde você parou.
+- **Leitura confortável** — tamanho do texto, texto justificado (ePub e Mobi), papel claro, sépia ou escuro, sumário e tela cheia. O Lume lembra a página onde você parou.
 - **Régua de leitura** — destaca a linha que você está lendo e escurece o resto. A seta ↓ desce uma linha e vira a página sozinha no fim; ↑ volta. Tem modo automático com velocidade em palavras por minuto.
 - **Marcações e anotações** — trechos marcados e comentários ficam juntos na tela **Anotações**, com a cor de cada marcação. Clique numa anotação para voltar ao trecho.
 - **Discord** — mostra no seu perfil o livro que você está lendo (pode ser desligado).
@@ -116,6 +120,7 @@ O resultado fica em `dist\`: o `Lume.exe` (com os três arquivos `.dll` do WebVi
 - ✔ Uma ou duas páginas no ePub
 - ✔ Programa para Windows com janela própria e instalador
 - ✔ Discord Rich Presence (Lendo / autor / título)
+- ✔ Texto justificado com hifenização (ePub e Mobi)
 - ✔ Funciona sem internet
 
 ## Próximas ideias
